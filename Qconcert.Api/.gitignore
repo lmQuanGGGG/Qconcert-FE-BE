@@ -1,0 +1,49 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# Configuration files with sensitive data
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.json
+!appsettings.Example.json
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+.vscode/
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*

@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Configuration files with sensitive data
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+
+# Build outputs
+bin/
+obj/
+.next/
+out/
+build/
+dist/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
