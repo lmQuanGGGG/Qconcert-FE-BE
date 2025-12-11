@@ -44,7 +44,10 @@ public class FavoriteService : IFavoriteService
             AverageRating = f.Event.AverageRating,
             ReviewCount = f.Event.ReviewCount,
             ViewCount = f.Event.ViewCount,
-            CreatedAt = f.Event.CreatedAt
+            CreatedAt = f.Event.CreatedAt,
+            Image9x16 = f.Event.Image9x16 != null ? Convert.ToBase64String(f.Event.Image9x16) : null,
+            Image16x9 = f.Event.Image16x9 != null ? Convert.ToBase64String(f.Event.Image16x9) : null,
+            OrganizerLogo = f.Event.OrganizerLogo != null ? Convert.ToBase64String(f.Event.OrganizerLogo) : null
         });
     }
 

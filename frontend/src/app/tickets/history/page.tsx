@@ -15,7 +15,8 @@ interface OrderTicket {
   eventLocation: string;
   ticketType: string;
   quantity: number;
-  totalAmount: number;
+  totalAmount?: number;
+  totalPrice?: number;
   orderDate: string;
   status: string;
   qrCodeUrl?: string;
@@ -170,7 +171,7 @@ export default function TicketHistoryPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-gray-400 text-sm">Mã đơn</p>
-                          <p className="text-purple-400 font-mono">#{ticket.orderId.slice(0, 8)}</p>
+                          <p className="text-purple-400 font-mono">#{String(ticket.orderId).padStart(8, '0')}</p>
                         </div>
                       </div>
 
@@ -201,7 +202,7 @@ export default function TicketHistoryPage() {
                         <div className="text-right">
                           <p className="text-gray-400 text-sm">Tổng tiền</p>
                           <p className="text-purple-400 font-bold text-xl">
-                            {ticket.totalAmount.toLocaleString('vi-VN')}₫
+                            {(ticket.totalAmount || ticket.totalPrice || 0).toLocaleString('vi-VN')}₫
                           </p>
                         </div>
                       </div>

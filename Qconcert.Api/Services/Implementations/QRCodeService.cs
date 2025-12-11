@@ -36,8 +36,8 @@ public class QRCodeService : IQRCodeService
         if (orderDetail == null)
             return false;
 
-        if (orderDetail.IsCheckedIn)
-            throw new InvalidOperationException("Vé đã được check-in rồi");
+        if (orderDetail.IsCheckedIn || orderDetail.IsUsed)
+            throw new InvalidOperationException("Vé đã được sử dụng rồi");
 
         if (orderDetail.Order.PaymentStatus != "Paid")
             throw new InvalidOperationException("Đơn hàng chưa thanh toán");
@@ -46,6 +46,7 @@ public class QRCodeService : IQRCodeService
             throw new InvalidOperationException("Sự kiện đã diễn ra quá 2 giờ");
 
         orderDetail.IsCheckedIn = true;
+        orderDetail.IsUsed = true;
         orderDetail.CheckInTime = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 

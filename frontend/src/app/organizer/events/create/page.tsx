@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Calendar, MapPin, Upload, Plus, Trash2 } from 'lucide-react';
 import { GlassCard, Scene3D } from '@/components/3d/Scene';
+import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import { getProvinces, getProvinceWithDistricts, getDistrictWithWards, Province, District, Ward } from '@/lib/provinces';
 
@@ -18,6 +19,7 @@ interface TicketType {
 
 export default function CreateEventPage() {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -116,11 +118,51 @@ export default function CreateEventPage() {
     setTickets(updated);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, type: '9x16' | '16x9' | 'logo') => {
+  // Compress image before upload
+  const compressImage = (file: File, maxWidth: number, maxHeight: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Convert to base64 with 0.8 quality
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, type: '9x16' | '16x9' | 'logo') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 5MB)
+    // Validate file size (max 5MB original)
     if (file.size > 5 * 1024 * 1024) {
       alert('Kích thước ảnh không được vượt quá 5MB');
       return;
@@ -132,22 +174,29 @@ export default function CreateEventPage() {
       return;
     }
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const preview = reader.result as string;
+    try {
+      // Compress image based on type
+      const maxDimensions = type === '9x16' ? { w: 720, h: 1280 } : type === '16x9' ? { w: 1280, h: 720 } : { w: 500, h: 500 };
+      const compressed = await compressImage(file, maxDimensions.w, maxDimensions.h);
+      
+      // Check compressed size
+      const compressedSize = (compressed.length * 3) / 4; // Approximate base64 size
+      console.log(`Original: ${(file.size / 1024).toFixed(0)}KB, Compressed: ${(compressedSize / 1024).toFixed(0)}KB`);
+      
       if (type === '9x16') {
         setImage9x16(file);
-        setPreview9x16(preview);
+        setPreview9x16(compressed);
       } else if (type === '16x9') {
         setImage16x9(file);
-        setPreview16x9(preview);
+        setPreview16x9(compressed);
       } else {
         setOrganizerLogo(file);
-        setPreviewLogo(preview);
+        setPreviewLogo(compressed);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      alert('Lỗi xử lý ảnh. Vui lòng thử ảnh khác.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,12 +204,19 @@ export default function CreateEventPage() {
     setLoading(true);
 
     try {
+      // Check auth - interceptor sẽ tự động thêm token vào header
+      if (!isAuthenticated()) {
+        alert('Vui lòng đăng nhập lại');
+        router.push('/login');
+        return;
+      }
+
       // Prepare request body with base64 images
       const requestBody = {
         ...formData,
-        image9x16: preview9x16 || undefined,
-        image16x9: preview16x9 || undefined,
-        organizerLogo: previewLogo || undefined,
+        image9x16: preview9x16?.split(',')[1] || undefined,
+        image16x9: preview16x9?.split(',')[1] || undefined,
+        organizerLogo: previewLogo?.split(',')[1] || undefined,
         tickets: tickets.map(t => ({
           tenLoaiVe: t.tenLoaiVe,
           loaiVe: t.loaiVe,
@@ -170,14 +226,35 @@ export default function CreateEventPage() {
         }))
       };
 
+      // Log payload size để debug
+      const payloadStr = JSON.stringify(requestBody);
+      const payloadSizeKB = (payloadStr.length / 1024).toFixed(2);
+      console.log(` Total payload size: ${payloadSizeKB}KB`);
+      
+      if (payloadStr.length > 10 * 1024 * 1024) { // 10MB
+        alert(` Dữ liệu quá lớn (${payloadSizeKB}KB). Vui lòng:\n- Chọn ảnh nhỏ hơn\n- Giảm độ dài mô tả\n- Giảm số lượng loại vé`);
+        return;
+      }
+
+      // Interceptor tự động thêm Authorization header
+      console.log('🚀 Sending request to backend...');
       await api.post('/events', requestBody);
       
       alert('Tạo sự kiện thành công! Đang chờ admin duyệt.');
       router.push('/organizer/events');
     } catch (error: any) {
       console.error('Error creating event:', error);
-      const errorMessage = error.response?.data?.message || 'Tạo sự kiện thất bại';
-      alert(errorMessage);
+      
+      // Hiển thị lỗi chi tiết hơn
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        alert('Không thể kết nối backend API. Vui lòng:\n1. Kiểm tra backend có đang chạy không (http://localhost:5053)\n2. Kiểm tra CORS settings\n3. Kiểm tra file .env có đúng API URL không');
+      } else if (error.response?.status === 401) {
+        alert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+        router.push('/login');
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || 'Tạo sự kiện thất bại';
+        alert(`Lỗi: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }

@@ -8,7 +8,7 @@ namespace Qconcert.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Employee,Admin")]
+[Authorize(Roles = "Employee,Admin,Organizer")]
 public class QRCodeController : ControllerBase
 {
     private readonly IQRCodeService _qrCodeService;

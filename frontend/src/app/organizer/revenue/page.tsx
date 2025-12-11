@@ -9,9 +9,11 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 
 interface RevenueData {
+  eventId: number;
   eventName: string;
   ticketsSold: number;
-  totalRevenue: number;
+  revenue: number;
+  totalRevenue?: number;
   eventDate: string;
 }
 
@@ -44,7 +46,7 @@ export default function RevenuePage() {
     }
   };
 
-  const totalRevenue = revenueData.reduce((sum, item) => sum + item.totalRevenue, 0);
+  const totalRevenue = revenueData.reduce((sum, item) => sum + (item.revenue || item.totalRevenue || 0), 0);
   const totalTickets = revenueData.reduce((sum, item) => sum + item.ticketsSold, 0);
   const avgRevenuePerEvent = revenueData.length > 0 ? totalRevenue / revenueData.length : 0;
 
@@ -193,7 +195,7 @@ export default function RevenuePage() {
                       </td>
                       <td className="py-4 px-4 text-right">
                         <p className="text-green-400 font-bold">
-                          {item.totalRevenue.toLocaleString('vi-VN')}₫
+                          {(item.revenue || item.totalRevenue || 0).toLocaleString('vi-VN')}₫
                         </p>
                       </td>
                     </motion.tr>

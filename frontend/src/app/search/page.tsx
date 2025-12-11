@@ -41,7 +41,7 @@ export default function SearchPage() {
   const loadEvents = async () => {
     setLoading(true);
     try {
-      const response = await eventsApi.search(searchQuery);
+      const response = await eventsApi.getAll(1, 100, undefined, searchQuery, true);
       setEvents(response.data.data as any);
     } catch (error) {
       console.error('Error searching events:', error);

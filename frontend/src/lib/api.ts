@@ -34,18 +34,48 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
         const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
           refreshToken,
         });
 
-        const { accessToken } = response.data.data;
-        localStorage.setItem('accessToken', accessToken);
+        if (response.data.success) {
+          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+          
+          // Update localStorage
+          localStorage.setItem('accessToken', accessToken);
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken);
+          }
 
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
+          // Update Zustand store
+          const { useAuthStore } = await import('@/store/useAuthStore');
+          const currentUser = useAuthStore.getState().user;
+          if (currentUser) {
+            useAuthStore.getState().setAuth(currentUser, accessToken, newRefreshToken || refreshToken);
+          }
+
+          // Retry original request with new token
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return api(originalRequest);
+        } else {
+          throw new Error('Token refresh failed');
+        }
       } catch (refreshError) {
+        console.error('Token refresh error:', refreshError);
+        
+        // Clear all auth data
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        
+        // Clear Zustand store
+        const { useAuthStore } = await import('@/store/useAuthStore');
+        useAuthStore.getState().clearAuth();
+        
+        // Redirect to login
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
@@ -134,6 +164,7 @@ export interface CartItem {
   ticketId: number;
   ticketName: string;
   eventName: string;
+  eventId?: number; // Add eventId for order creation
   price: number;
   quantity: number;
   subtotal: number;
@@ -159,14 +190,13 @@ export const authApi = {
 };
 
 export const eventsApi = {
-  getAll: (page = 1, pageSize = 12) => 
-    api.get<ApiResponse<Event[]>>('/events', { params: { page, pageSize } }),
-  
-  getById: (id: number) => 
-    api.get<ApiResponse<Event>>(`/events/${id}`),
-  
-  search: (query: string) => 
-    api.get<ApiResponse<Event[]>>('/events/search', { params: { query } }),
+  getAll: (page = 1, pageSize = 12, categoryId?: number, keyword?: string, isApproved?: boolean) =>
+    api.get('/events', { params: { page, pageSize, categoryId, keyword, isApproved } }),
+  getById: (id: number) => api.get(`/events/${id}`),
+  create: (data: any) => api.post('/events', data),
+  update: (id: number, data: any) => api.put(`/events/${id}`, data),
+  delete: (id: number) => api.delete(`/events/${id}`),
+  incrementView: (id: number) => api.post(`/events/${id}/view`),
 };
 
 export const ticketsApi = {
@@ -197,4 +227,21 @@ export const ordersApi = {
   
   getMyOrders: () => 
     api.get<ApiResponse<any[]>>('/orders/my-orders'),
+};
+
+export const reviewsApi = {
+  getByEventId: (eventId: number, page = 1, pageSize = 20) =>
+    api.get(`/reviews/event/${eventId}`, { params: { page, pageSize } }),
+  create: (data: { eventId: number; rating: number; comment: string }) =>
+    api.post('/reviews', data),
+  update: (reviewId: number, data: { rating: number; comment: string }) =>
+    api.put(`/reviews/${reviewId}`, data),
+  delete: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
+};
+
+export const favoritesApi = {
+  getMyFavorites: () => api.get('/favorites/my-favorites'),
+  add: (eventId: number) => api.post(`/favorites/${eventId}`),
+  remove: (eventId: number) => api.delete(`/favorites/${eventId}`),
+  check: (eventId: number) => api.get(`/favorites/${eventId}/check`),
 };

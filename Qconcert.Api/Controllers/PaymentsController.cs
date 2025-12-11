@@ -11,10 +11,12 @@ namespace Qconcert.Api.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
+    private readonly IConfiguration _configuration;
 
-    public PaymentsController(IPaymentService paymentService)
+    public PaymentsController(IPaymentService paymentService, IConfiguration configuration)
     {
         _paymentService = paymentService;
+        _configuration = configuration;
     }
 
     [HttpPost("create-payment")]
@@ -64,6 +66,52 @@ public class PaymentsController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<bool>.ErrorResult(ex.Message));
+        }
+    }
+
+    [AllowAnonymous]
+    [HttpGet("payos-return")]
+    public async Task<IActionResult> PayOSReturn([FromQuery] string? orderCode, [FromQuery] string? status, [FromQuery] string? code)
+    {
+        try
+        {
+            Console.WriteLine($"=== PayOS Callback Received ===");
+            Console.WriteLine($"OrderCode: {orderCode}");
+            Console.WriteLine($"Status: {status}");
+            Console.WriteLine($"Code: {code}");
+            
+            // PayOS returns 'code' parameter with values: '00' = success, others = failed
+            if (!string.IsNullOrEmpty(orderCode) && (status == "PAID" || code == "00"))
+            {
+                var order = await _paymentService.GetOrderByPaymentCodeAsync(orderCode);
+                
+                if (order != null)
+                {
+                    Console.WriteLine($"Found order: {order.OrderId}, updating status...");
+                    await _paymentService.UpdatePaymentStatusAfterCallbackAsync(order.OrderId, "Paid");
+                    Console.WriteLine("Status updated successfully");
+                    
+                    // Gửi email với QR code vé sau khi thanh toán thành công
+                    Console.WriteLine("Sending ticket email with QR codes...");
+                    await _paymentService.SendTicketEmailAsync(order.OrderId);
+                    Console.WriteLine("Email sent successfully");
+                    
+                    return Redirect($"{_configuration["FrontendUrl"]}/orders/{order.OrderId}/success?payment=success");
+                }
+                else
+                {
+                    Console.WriteLine($"Order not found for orderCode: {orderCode}");
+                }
+            }
+            
+            Console.WriteLine("Payment failed or invalid parameters");
+            return Redirect($"{_configuration["FrontendUrl"]}/checkout?payment=failed");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"PayOS callback error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return Redirect($"{_configuration["FrontendUrl"]}/checkout?payment=error");
         }
     }
 }

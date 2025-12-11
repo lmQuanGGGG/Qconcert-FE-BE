@@ -27,8 +27,8 @@ export default function AdminDashboardPage() {
   const loadDashboardData = async () => {
     try {
       const [statsRes, eventsRes] = await Promise.all([
-        api.get('/admin/dashboard'),
-        api.get('/admin/events/pending'),
+        api.get('/admin/statistics'),
+        api.get('/admin/pending-events'),
       ]);
       setStats(statsRes.data.data);
       setEvents(eventsRes.data.data);
@@ -39,21 +39,26 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleApproveEvent = async (eventId: string) => {
+  const handleApproveEvent = async (eventId: number) => {
     try {
-      await api.post(`/admin/events/${eventId}/approve`);
+      await api.post(`/events/${eventId}/approve`);
+      alert('Đã duyệt sự kiện thành công!');
       loadDashboardData();
     } catch (error) {
       console.error('Error approving event:', error);
+      alert('Có lỗi xảy ra khi duyệt sự kiện');
     }
   };
 
-  const handleRejectEvent = async (eventId: string) => {
+  const handleRejectEvent = async (eventId: number) => {
+    if (!confirm('Bạn có chắc muốn từ chối sự kiện này?')) return;
     try {
-      await api.post(`/admin/events/${eventId}/reject`);
+      await api.delete(`/events/${eventId}`);
+      alert('Đã từ chối và xóa sự kiện');
       loadDashboardData();
     } catch (error) {
       console.error('Error rejecting event:', error);
+      alert('Có lỗi xảy ra khi từ chối sự kiện');
     }
   };
 

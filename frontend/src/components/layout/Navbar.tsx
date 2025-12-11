@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, User, Menu, Search, LogOut, Settings, LayoutDashboard, Plus, Ticket, BarChart3 } from 'lucide-react';
+import { ShoppingCart, User, Menu, Search, LogOut, Settings, LayoutDashboard, Plus, Ticket, BarChart3, Heart, ScanLine } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCartStore } from '@/store/useCartStore';
@@ -11,7 +11,13 @@ export function Navbar() {
   const { user, isAuthenticated, getRole, clearAuth } = useAuthStore();
   const { itemCount } = useCartStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const role = getRole();
+
+  // Fix hydration error - only render auth-dependent UI after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <motion.nav
@@ -72,7 +78,7 @@ export function Navbar() {
             </Link>
 
             {/* User Menu */}
-            {isAuthenticated() ? (
+            {mounted && isAuthenticated() ? (
               <div className="relative">
                 <motion.div
                   whileHover={{ scale: 1.1 }}
@@ -96,6 +102,13 @@ export function Navbar() {
                         <div className="px-4 py-3 hover:bg-white/10 transition flex items-center gap-2 text-white">
                           <Settings className="w-4 h-4" />
                           <span>Tài khoản</span>
+                        </div>
+                      </Link>
+                      
+                      <Link href="/profile/favorites" onClick={() => setShowUserMenu(false)}>
+                        <div className="px-4 py-3 hover:bg-white/10 transition flex items-center gap-2 text-white">
+                          <Heart className="w-4 h-4" />
+                          <span>Sự kiện yêu thích</span>
                         </div>
                       </Link>
                       
@@ -135,6 +148,12 @@ export function Navbar() {
                               <span>Doanh thu</span>
                             </div>
                           </Link>
+                          <Link href="/organizer/checkin" onClick={() => setShowUserMenu(false)}>
+                            <div className="px-4 py-3 hover:bg-white/10 transition flex items-center gap-2 text-pink-400">
+                              <ScanLine className="w-4 h-4" />
+                              <span>Quét vé Check-in</span>
+                            </div>
+                          </Link>
                         </>
                       )}
                       
@@ -156,7 +175,7 @@ export function Navbar() {
                   )}
                 </AnimatePresence>
               </div>
-            ) : (
+            ) : mounted ? (
               <Link href="/login">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -166,6 +185,8 @@ export function Navbar() {
                   Đăng nhập
                 </motion.button>
               </Link>
+            ) : (
+              <div className="w-24 h-10 bg-white/10 rounded-full animate-pulse" />
             )}
 
             {/* Mobile Menu */}

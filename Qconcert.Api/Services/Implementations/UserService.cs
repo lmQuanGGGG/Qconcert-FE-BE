@@ -91,7 +91,10 @@ public class UserService : IUserService
         if (!result.Succeeded)
             throw new InvalidOperationException(string.Join(", ", result.Errors.Select(e => e.Description)));
 
-        await _userManager.AddToRoleAsync(user, "Customer");
+        // Chỉ cho phép Customer, Organizer, Employee
+        var allowedRoles = new[] { "Customer", "Organizer", "Employee" };
+        var role = allowedRoles.Contains(request.Role) ? request.Role : "Customer";
+        await _userManager.AddToRoleAsync(user, role);
         var roles = await _userManager.GetRolesAsync(user);
 
         return new UserResponse

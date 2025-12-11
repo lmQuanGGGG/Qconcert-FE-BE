@@ -20,6 +20,7 @@ export default function RegisterPage() {
     password: '',
     fullName: '',
     phoneNumber: '',
+    role: 'Customer',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,6 +80,20 @@ export default function RegisterPage() {
                   placeholder="Nguyễn Văn A"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Vai trò</label>
+              <select
+                required
+                value={formData.role}
+                onChange={e => setFormData({ ...formData, role: e.target.value })}
+                className="w-full pl-4 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="Customer">Người dùng</option>
+                <option value="Organizer">Tổ chức sự kiện</option>
+                <option value="Employee">Nhân viên</option>
+              </select>
             </div>
 
             <div>

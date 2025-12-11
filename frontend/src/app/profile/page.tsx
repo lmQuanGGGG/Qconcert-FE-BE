@@ -134,7 +134,7 @@ export default function ProfilePage() {
                           {new Date(order.ngayDatHang).toLocaleDateString('vi-VN')}
                         </span>
                         <span className="text-purple-400 font-semibold">
-                          {order.tongTien.toLocaleString('vi-VN')}₫
+                          {(order.tongTien || order.totalPrice || 0).toLocaleString('vi-VN')}₫
                         </span>
                       </div>
                     </motion.div>

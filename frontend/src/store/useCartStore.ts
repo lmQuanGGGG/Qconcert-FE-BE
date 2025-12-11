@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 export interface CartItem {
   ticketId: string;
+  eventId?: number; // Add eventId for order creation
   eventName: string;
   ticketType: string;
   price: number;

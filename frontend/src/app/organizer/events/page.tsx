@@ -62,8 +62,10 @@ export default function OrganizerEventsPage() {
 
   const filteredEvents = events.filter(event => {
     if (filter === 'approved') return event.isApproved === true;
-    if (filter === 'pending') return event.isApproved === null;
-    if (filter === 'rejected') return event.isApproved === false;
+    // Backend: false = chờ duyệt (mới tạo), true = đã duyệt
+    // Không có trạng thái "từ chối" trong hệ thống hiện tại
+    if (filter === 'pending') return event.isApproved === false;
+    if (filter === 'rejected') return false; // Tạm thời không có rejected
     return true;
   });
 
@@ -161,22 +163,15 @@ export default function OrganizerEventsPage() {
                             <span className="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full">
                               {event.categoryName}
                             </span>
-                            {event.isApproved === true && (
+                            {event.isApproved === true ? (
                               <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full flex items-center gap-1">
                                 <CheckCircle className="w-3 h-3" />
                                 Đã duyệt
                               </span>
-                            )}
-                            {event.isApproved === null && (
+                            ) : (
                               <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
                                 Chờ duyệt
-                              </span>
-                            )}
-                            {event.isApproved === false && (
-                              <span className="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-full flex items-center gap-1">
-                                <XCircle className="w-3 h-3" />
-                                Từ chối
                               </span>
                             )}
                           </div>

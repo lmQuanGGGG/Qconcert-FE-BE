@@ -37,9 +37,12 @@ public class OrderResponse
     public string Email { get; set; } = string.Empty;
     public DateTime OrderDate { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime NgayDatHang { get; set; }
     public decimal TotalPrice { get; set; }
+    public decimal TongTien { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? PaymentStatus { get; set; }
+    public string? TrangThaiThanhToan { get; set; }
     public string? PaymentMethod { get; set; }
     public string? TransactionId { get; set; }
     public string? QrCodeUrl { get; set; }

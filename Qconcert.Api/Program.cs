@@ -9,6 +9,12 @@ using Qconcert.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel to accept large request bodies (for image uploads)
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 104857600; // 100MB
+});
+
 // Add DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -48,6 +54,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Add HttpClient for PayOS
+builder.Services.AddHttpClient();
+
 // Register Services
 builder.Services.AddScoped<Qconcert.Api.Services.Interfaces.IUserService, Qconcert.Api.Services.Implementations.UserService>();
 builder.Services.AddScoped<Qconcert.Api.Services.Interfaces.IEventService, Qconcert.Api.Services.Implementations.EventService>();
@@ -70,11 +79,12 @@ builder.Services.AddControllers();
 // Add CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
+        policy.WithOrigins("http://localhost:3000") // Frontend URL
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -111,6 +121,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Middleware to allow large request bodies
+app.Use(async (context, next) =>
+{
+    context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = 104857600; // 100MB
+    await next();
+});
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -119,7 +136,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

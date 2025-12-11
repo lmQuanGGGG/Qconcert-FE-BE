@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CreditCard, Building2, CheckCircle } from 'lucide-react';
 import { GlassCard, Scene3D } from '@/components/3d/Scene';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ordersApi } from '@/lib/api';
+import { api, ordersApi } from '@/lib/api';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -21,36 +21,80 @@ export default function CheckoutPage() {
     soDienThoai: user?.phoneNumber || '',
   });
 
+  // Redirect if cart empty - use useEffect to prevent setState in render
+  useEffect(() => {
+    if (items.length === 0) {
+      router.push('/cart');
+    }
+  }, [items.length, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Get eventId from first item (assuming all items are from same event)
+      const firstItem = items[0];
+      if (!firstItem) {
+        alert('Giỏ hàng trống');
+        return;
+      }
+
+      if (!firstItem.eventId) {
+        alert('Lỗi: Thiếu thông tin sự kiện. Vui lòng thêm vé lại từ trang sự kiện.');
+        return;
+      }
+
       const orderData = {
-        items: items.map(item => ({
-          ticketId: item.ticketId,
+        eventId: firstItem.eventId,
+        email: formData.email,
+        orderDetails: items.map(item => ({
+          ticketId: parseInt(item.ticketId),
           quantity: item.quantity,
         })),
-        customerInfo: formData,
-        paymentMethod,
+        discountCode: null,
       };
 
-      const response = await ordersApi.create(orderData);
-      const orderId = response.data.data.orderId;
+      console.log('Creating order with data:', orderData);
+      const orderResponse = await ordersApi.create(orderData);
+      const orderId = orderResponse.data.data.orderId;
       
+      // Create payment if payment method is PayOS
+      if (paymentMethod === 'PayOS') {
+        console.log('Creating PayOS payment for order:', orderId);
+        const paymentResponse = await api.post('/payments/create-payment', {
+          orderId: orderId,
+          returnUrl: `${process.env.NEXT_PUBLIC_API_URL}/api/payments/payos-return`,
+          cancelUrl: `${window.location.origin}/checkout`
+        });
+        
+        console.log('Payment response:', paymentResponse.data);
+        
+        if (paymentResponse.data.success && paymentResponse.data.data.paymentUrl) {
+          clearCart();
+          // Redirect to PayOS payment page
+          window.location.href = paymentResponse.data.data.paymentUrl;
+          return;
+        } else {
+          throw new Error('Không tạo được link thanh toán');
+        }
+      }
+      
+      // For bank transfer
       clearCart();
       router.push(`/orders/${orderId}/success`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating order:', error);
-      alert('Đặt hàng thất bại. Vui lòng thử lại.');
+      console.error('Error response:', error.response?.data);
+      const errorMsg = error.response?.data?.message || error.message || 'Đặt hàng thất bại';
+      alert(`Lỗi: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
   };
 
   if (items.length === 0) {
-    router.push('/cart');
-    return null;
+    return null; // useEffect will handle redirect
   }
 
   return (

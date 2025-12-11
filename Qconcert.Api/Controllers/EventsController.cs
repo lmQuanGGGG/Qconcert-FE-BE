@@ -20,11 +20,11 @@ public class EventsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] bool? isApproved, [FromQuery] int? categoryId)
+    public async Task<IActionResult> GetAll([FromQuery] bool? isApproved, [FromQuery] int? categoryId, [FromQuery] string? keyword)
     {
         try
         {
-            var events = await _eventService.GetAllEventsAsync(isApproved, categoryId);
+            var events = await _eventService.GetAllEventsAsync(isApproved, categoryId, keyword);
             return Ok(ApiResponse<IEnumerable<EventResponse>>.SuccessResult(events));
         }
         catch (Exception ex)
@@ -61,12 +61,20 @@ public class EventsController : ControllerBase
                 return Unauthorized(ApiResponse<Event>.ErrorResult("Không xác định được người dùng"));
 
             var newEvent = await _eventService.CreateEventAsync(request, userId);
+            
+            // Trả về response nhỏ gọn, KHÔNG bao gồm ảnh
+            var response = new { 
+                id = newEvent.Id, 
+                name = newEvent.Name,
+                isApproved = newEvent.IsApproved 
+            };
+            
             return CreatedAtAction(nameof(GetById), new { id = newEvent.Id }, 
-                ApiResponse<Event>.SuccessResult(newEvent, "Tạo sự kiện thành công"));
+                ApiResponse<object>.SuccessResult(response, "Tạo sự kiện thành công"));
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<Event>.ErrorResult(ex.Message));
+            return BadRequest(ApiResponse<object>.ErrorResult(ex.Message));
         }
     }
 
@@ -107,6 +115,25 @@ public class EventsController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Organizer,Admin")]
+    [HttpGet("revenue")]
+    public async Task<IActionResult> GetOrganizerRevenue([FromQuery] string timeRange = "month")
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponse<IEnumerable<EventRevenueResponse>>.ErrorResult("Không xác định được người dùng"));
+
+            var revenue = await _eventService.GetOrganizerRevenueAsync(userId, timeRange);
+            return Ok(ApiResponse<IEnumerable<EventRevenueResponse>>.SuccessResult(revenue));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<IEnumerable<EventRevenueResponse>>.ErrorResult(ex.Message));
+        }
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpPost("{id}/approve")]
     public async Task<IActionResult> Approve(int id)
@@ -141,6 +168,23 @@ public class EventsController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<IEnumerable<EventResponse>>.ErrorResult(ex.Message));
+        }
+    }
+
+    [HttpPost("{id}/view")]
+    public async Task<IActionResult> IncrementViewCount(int id)
+    {
+        try
+        {
+            var result = await _eventService.IncrementViewCountAsync(id);
+            if (!result)
+                return NotFound(ApiResponse<bool>.ErrorResult("Không tìm thấy sự kiện"));
+
+            return Ok(ApiResponse<bool>.SuccessResult(true, "Đã tăng lượt xem"));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<bool>.ErrorResult(ex.Message));
         }
     }
 }

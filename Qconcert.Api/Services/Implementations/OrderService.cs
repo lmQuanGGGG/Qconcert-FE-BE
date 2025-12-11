@@ -11,10 +11,12 @@ namespace Qconcert.Api.Services.Implementations;
 public class OrderService : IOrderService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IEmailService _emailService;
 
-    public OrderService(ApplicationDbContext context)
+    public OrderService(ApplicationDbContext context, IEmailService emailService)
     {
         _context = context;
+        _emailService = emailService;
     }
 
     public async Task<OrderResponse> CreateOrderAsync(CreateOrderRequest request, string userId)
@@ -76,14 +78,19 @@ public class OrderService : IOrderService
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
+            // Email sẽ được gửi SAU KHI thanh toán thành công (trong PayOS callback)
+
             return new OrderResponse
             {
                 OrderId = order.OrderId,
                 EventName = order.EventName,
                 TotalPrice = order.TotalPrice,
+                TongTien = order.TotalPrice,
                 Status = order.Status,
                 PaymentStatus = order.PaymentStatus,
+                TrangThaiThanhToan = order.PaymentStatus,
                 CreatedAt = order.CreatedAt,
+                NgayDatHang = order.CreatedAt,
                 OrderDetails = orderDetails.Select(od => new OrderDetailResponse
                 {
                     OrderDetailId = od.OrderDetailId,
@@ -113,9 +120,12 @@ public class OrderService : IOrderService
         {
             OrderId = o.OrderId,
             EventName = o.EventName,
+            TongTien = o.TotalPrice,
             TotalPrice = o.TotalPrice,
             Status = o.Status,
+            TrangThaiThanhToan = o.PaymentStatus,
             PaymentStatus = o.PaymentStatus,
+            NgayDatHang = o.CreatedAt,
             CreatedAt = o.CreatedAt,
             OrderDetails = o.OrderDetails.Select(od => new OrderDetailResponse
             {
@@ -143,11 +153,14 @@ public class OrderService : IOrderService
         {
             OrderId = order.OrderId,
             EventName = order.EventName,
+            TongTien = order.TotalPrice,
             TotalPrice = order.TotalPrice,
             Status = order.Status,
+            TrangThaiThanhToan = order.PaymentStatus,
             PaymentStatus = order.PaymentStatus,
             PaymentMethod = order.PaymentMethod,
             TransactionId = order.TransactionId,
+            NgayDatHang = order.CreatedAt,
             CreatedAt = order.CreatedAt,
             OrderDetails = order.OrderDetails.Select(od => new OrderDetailResponse
             {

@@ -23,6 +23,9 @@ public class RegisterRequest
     public string Password { get; set; } = string.Empty;
     
     public string? PhoneNumber { get; set; }
+
+    [Required]
+    public string Role { get; set; } = "Customer";
 }
 
 public class RefreshTokenRequest
